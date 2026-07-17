@@ -51,4 +51,11 @@ the agent lists the public games and picks one. The key is read from
   `ARC_SOLVE_LEVELS` to demand more.
 - The ARC SDK leaves the game's (obfuscated) source on disk, which a determined agent
   can read — so this is a **source-available** solve, weaker than solving fully blind.
-- See [`example-run.md`](./example-run.md) for a full recorded run.
+## Recorded runs
+
+Two full runs, each with a live-replayed solution GIF:
+
+- **[LS20](./example-run-ls20.md)** — "walk to the goal", solved in 13 moves.
+- **[WA30](./example-run-wa30.md)** — a harder carry-sokoban puzzle the agent solved
+  with a BFS search (Opus 4.8), 26 moves — driven end to end by the workflow on a real
+  TaskYou instance.

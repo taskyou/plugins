@@ -6,6 +6,7 @@ description: >-
   `ty pipeline -d arc-solve "solve ls20-9607627b"`.
 steps:
   - name: solve
+    model: opus
     verify: .venv/bin/python check_solved.py
     prompt: |
       You will PLAY a live ARC-AGI-3 game and complete AT LEAST ONE level.
