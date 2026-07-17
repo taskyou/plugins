@@ -9,6 +9,8 @@ reality — the agent can't self-report success.
 ty pipeline -d arc-solve "solve ls20-9607627b"
 ```
 
+![arc-solve completing level 1 of LS20](./solve.gif)
+
 ## Requirements
 
 - **An ARC API key** at `~/.config/arc/key` (free — register at

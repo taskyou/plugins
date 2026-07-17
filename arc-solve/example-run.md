@@ -7,6 +7,10 @@ A recorded run of this workflow against the live ARC-AGI-3 game **LS20**
 ty pipeline -d arc-solve "solve ls20-9607627b"
 ```
 
+![The 13-move solution completing level 1 of LS20, replayed against the live game](./solve.gif)
+
+*The agent's solution, replayed on the live game — the player token routes to the goal and `levels_completed` ticks to 1.*
+
 ## What the agent did
 
 The agent set up the ARC SDK, explored the live game, and worked out the mechanics —
