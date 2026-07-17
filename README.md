@@ -17,8 +17,7 @@ same command to update them all (`git pull` under the hood).
 
 | Plugin | What it gives you |
 |--------|-------------------|
-| **rpi** | `ty pipeline -d rpi "<goal>"` — Research → Plan → Implement. Turns a goal into neutral research questions, researches the codebase (blind to the goal, for objectivity), designs an approach (human gate), plans it (human gate), implements, and opens a PR. |
-| **rpi-verified** | `ty pipeline -d rpi-verified "<goal>"` — Research → Implement → Simplify with a **reality gate**. The implementation *and* its simplification must pass your build + tests before the workflow advances. Schema-style: no completion on the agent's say-so. |
+| **rpi** | `ty pipeline -d rpi "<goal>"` — Research → Plan → Implement, **human-gated *and* reality-gated**. Neutral research questions, goal-blind research, a design gate and a plan gate you approve, then implement + simplify — each gated on your build + tests — then a PR. A human okays the approach; the machine proves the code. |
 | **plan-code-review** | `ty pipeline -d plan-code-review "<goal>"` — Plan → Code → two parallel reviewers → collect, on one shared branch. Each step's model/executor is configurable per project. |
 | **arc-solve** | `ty pipeline -d arc-solve "solve <game-id>"` — play a live [ARC-AGI-3](https://arcprize.org/arc-agi/3) game and complete a level. The gate **replays your solution against the real game**, so a win can't be faked. Needs only an ARC API key at `~/.config/arc/key`. |
 

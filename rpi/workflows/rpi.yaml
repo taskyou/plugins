@@ -1,5 +1,5 @@
 name: rpi
-description: Research → Plan → Implement, TaskYou-native (no HumanLayer). A phased, human-gated workflow that researches, designs, plans, then builds a change.
+description: Research → Plan → Implement — human-gated (design, plan) and reality-gated (implement + simplify pass your build/tests). A human okays the approach; the machine proves the code.
 steps:
   # 1. research-questions — the ONLY phase that reads the raw goal. It turns the
   # goal into a neutral set of questions the research phase must answer, so
@@ -172,10 +172,11 @@ steps:
       review — a human approves with `ty close <id>` to release implementation.
 
   # 6. implement — the first phase that touches code. It reads the approved plan
-  # and executes it, committing and pushing on the shared branch. Uses a plain
-  # prompt (not verbatim) so the DAG-derived git handoff is composed onto it.
+  # and executes it, committing and pushing on the shared branch. A reality gate
+  # (`make verify`) re-runs the build + tests before the workflow advances.
   - name: implement
     deps: [plan]
+    verify: make verify
     prompt: |
       Read the approved implementation plan by calling `taskyou_get_artifact`
       with name `plan` (and read `structure-outline`, `design`, or `research`
@@ -184,17 +185,36 @@ steps:
       Implement the plan phase by phase. After each phase, run the automated
       verification the plan specifies (build/tests) and fix what breaks before
       moving on. Follow the existing patterns the research identified; keep the
-      change focused on the goal. Do NOT open a pull request — the next phase
+      change focused on the goal. Do NOT open a pull request — a later phase
       does that.
 
-  # 7. describe-pr — the terminal/sink step. It opens the PR and the workflow
+      A verify gate runs `make verify` on your committed work and REJECTS
+      completion if the build or tests are red — fix the problem, don't work
+      around it. (No `make verify` target? Edit this step's `verify:` line to
+      your build+test command, e.g. `go build ./... && go test ./...`.)
+
+  # 7. simplify — shrink the change while the same gate stays green (the MDL move):
+  # tests are locked in, so the agent can cut aggressively and know instantly if it
+  # broke something.
+  - name: simplify
+    deps: [implement]
+    verify: make verify
+    prompt: |
+      The change works and the plan is done. Now make it smaller and clearer
+      WITHOUT changing behavior: collapse duplication and special cases into
+      shared rules, tighten names, and delete anything the goal does not need.
+      The same verify gate (`make verify`) re-runs your build + tests, so they
+      stay your safety net — simplify only as far as green allows. Commit and push.
+
+  # 8. describe-pr — the terminal/sink step. It opens the PR and the workflow
   # parks in 'blocked' for a human to merge. Plain prompt so the DAG-derived PR
   # handoff is composed onto it.
   - name: describe-pr
-    deps: [implement]
+    deps: [simplify]
     prompt: |
       The implementation is committed on the shared branch. Write a clear pull
       request: a title that summarizes the change and a body covering what
-      changed and why, how it was verified, and anything a reviewer should look
-      at closely. For context you may read the `plan` and `structure-outline`
-      artifacts via `taskyou_get_artifact`. Then open the pull request.
+      changed and why, how it was verified (build + tests green after implement
+      and simplify), and anything a reviewer should look at closely. For context
+      you may read the `plan` and `structure-outline` artifacts via
+      `taskyou_get_artifact`. Then open the pull request.
