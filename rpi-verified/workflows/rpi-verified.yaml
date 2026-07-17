@@ -1,0 +1,40 @@
+name: rpi-verified
+description: >-
+  Research → Implement → Simplify, with a reality gate. Schema-style: the change
+  and its simplification must pass your project's build + tests before the workflow
+  advances — no completion on the agent's say-so. Gates on `make verify`; edit the
+  two verify: lines to your own build+test command if you don't use make.
+steps:
+  - name: research
+    prompt: |
+      Research the codebase to understand what the goal below requires. Read the
+      relevant files, trace how the affected code works today, and note the
+      patterns, constraints, and existing tests that cover this area. Do NOT write
+      code yet. Save a concise, factual research summary by calling
+      taskyou_set_artifact with name "research", then complete.
+  - name: implement
+    deps: [research]
+    verify: make verify
+    prompt: |
+      Read the research (taskyou_get_artifact "research"), then implement the goal.
+      Treat your change as a hypothesis about how the code should behave — it has to
+      survive contact with reality, so run the project's build and tests as you go.
+      When done, commit and push.
+
+      A verify gate runs `make verify` on your committed work and REJECTS completion
+      if anything is red. Fix the actual problem — do not work around the check.
+  - name: simplify
+    deps: [implement]
+    verify: make verify
+    prompt: |
+      The change works. Now make it smaller and clearer WITHOUT changing behavior:
+      collapse duplication and special cases into shared rules, tighten names, and
+      delete anything the goal does not need. The same verify gate (`make verify`)
+      re-runs your build + tests, so they stay your safety net — simplify only as
+      far as green allows. Commit and push.
+  - name: pr
+    deps: [simplify]
+    prompt: |
+      Open a pull request: a title that summarizes the change, and a body covering
+      what changed, why, and how it was verified (build + tests green after both the
+      implement and simplify steps).

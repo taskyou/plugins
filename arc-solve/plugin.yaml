@@ -1,0 +1,7 @@
+name: arc-solve
+version: 0.1.0
+description: >-
+  Play a live ARC-AGI-3 game and complete a level, with a gate that REPLAYS your
+  solution against the real game so a win can't be faked. Needs an ARC API key at
+  ~/.config/arc/key (free at https://three.arcprize.org); the workflow installs the
+  SDK itself. Run: ty pipeline -d arc-solve "solve <game-id>".

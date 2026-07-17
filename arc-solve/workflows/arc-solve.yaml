@@ -1,0 +1,40 @@
+name: arc-solve
+description: >-
+  Play a live ARC-AGI-3 game and complete a level. The verify gate REPLAYS your
+  solution against the live game, so a win cannot be faked. Needs an ARC API key at
+  ~/.config/arc/key. Name the game id in the goal, e.g.
+  `ty pipeline -d arc-solve "solve ls20-9607627b"`.
+steps:
+  - name: solve
+    verify: .venv/bin/python check_solved.py
+    prompt: |
+      You will PLAY a live ARC-AGI-3 game and complete AT LEAST ONE level.
+
+      SET UP (run in your worktree):
+        python3 -m venv .venv
+        .venv/bin/pip install -q arc-agi
+        D=$(find "$(ty plugins dir)" -path '*arc-solve/arc_client.py' | head -1 | xargs dirname)
+        cp "$D/arc_client.py" "$D/check_solved.py" .
+        printf '.venv/\n' >> .gitignore
+      (The ARC key is read from ~/.config/arc/key automatically.)
+
+      PICK THE GAME: the goal names an ARC-3 game id (e.g. ls20-9607627b). Write it to
+      `game.txt`. If none is named, run `.venv/bin/python arc_client.py games`, choose
+      one, and write it to game.txt.
+
+      PLAY: with `.venv/bin/python`, `import arc_client` and use:
+        play([a1,a2,...])   -> resets (seed 0, deterministic), applies action ints (1-4);
+                               returns levels_completed, final_state, per-step trace.
+        grid_after([...])   -> the 64x64 frame after those actions, to inspect.
+      Work out what makes levels_completed increment, plan a path (build a world model
+      from the frames to plan offline if useful), and find a sequence that completes a
+      level. Write it to solution.json as {"game":"<id>","actions":[...]}.
+
+      TEST: `.venv/bin/python check_solved.py` replays your solution against the LIVE
+      game and passes ONLY if it actually completes a level. You cannot fake it.
+      Iterate until it passes, then commit (do NOT commit .venv) and push.
+  - name: report
+    deps: [solve]
+    prompt: |
+      A verified level-completing solution is committed in solution.json. Write a
+      one-line RESULT.md (game id, number of actions, levels completed) and commit.

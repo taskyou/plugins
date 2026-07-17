@@ -1,0 +1,9 @@
+name: rpi-verified
+version: 0.1.0
+description: >-
+  Research → Implement → Simplify, with a reality gate. The implementation and its
+  simplification each have to pass your project's build + tests before the workflow
+  advances — the agent can't complete a step on its own say-so. Run it with
+  `ty pipeline -d rpi-verified "<goal>"`. Gates on `make verify`; if your project
+  has no such target, edit the two `verify:` lines in the workflow to your own
+  build + test command (e.g. `go build ./... && go test ./...`).

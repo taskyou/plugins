@@ -1,0 +1,8 @@
+name: rpi
+version: 0.1.0
+description: >-
+  Research → Plan → Implement. A phased, human-gated workflow: it turns a goal into
+  neutral research questions, researches the codebase (blind to the goal, for
+  objectivity), designs an approach (human-review gate), outlines it, writes a
+  precise plan (human-review gate), implements it, and opens a PR. Run with
+  `ty pipeline -d rpi "<goal>"`. Approve a parked gate with `ty close <task-id>`.
