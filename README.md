@@ -19,7 +19,7 @@ same command to update them all (`git pull` under the hood).
 |--------|-------------------|
 | **rpi** | `ty pipeline -d rpi "<goal>"` — Research → Plan → Implement, **human-gated *and* reality-gated**. Neutral research questions, goal-blind research, a design gate and a plan gate you approve, then implement + simplify — each gated on your build + tests — then a PR. A human okays the approach; the machine proves the code. |
 | **plan-code-review** | `ty pipeline -d plan-code-review "<goal>"` — Plan → Code → two parallel reviewers → collect, on one shared branch. Each step's model/executor is configurable per project. |
-| **claude-profile-router** | Two Claude logins? Each task goes to whichever account has the most rate-limit headroom left, and waits in the queue when both are spent. The one **hook** plugin here rather than a workflow — it answers ty's `task.route` hook just before a task spawns. |
+| **claude-profile-router** | Two Claude logins? Each task goes to whichever account has the most rate-limit headroom left, and waits in the queue when both are spent. The one **hook** plugin here rather than a workflow — it answers ty's `task.route` hook just before a task spawns. Needs `jq` or `python3`. |
 | **arc-solve** | `ty pipeline -d arc-solve "solve <game-id>"` — play a live [ARC-AGI-3](https://arcprize.org/arc-agi/3) game and complete a level. The gate **replays your solution against the real game**, so a win can't be faked. Needs only an ARC API key at `~/.config/arc/key`. |
 
 ## The idea: gate progress on reality

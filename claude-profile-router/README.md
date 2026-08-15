@@ -10,30 +10,31 @@ both are spent, it holds the task in the queue instead of burning a session on a
 429.
 
 ```
+$ ty plugins run claude-profile-router status
 Routing threshold: skip a profile at or above 90% used
 
 /Users/me/.claude-personal
   me@personal.example
-  99% used (weekly, resets Sun 05:00) — 1% headroom
+  99% used (weekly_all, resets 2026-08-16 10:00:00)
+  -> skipped by the router (at or above 90%)
 
 /Users/me/.claude-work
   me@work.example
-  11% used (weekly, resets Thu 16:00) — 89% headroom
+  12% used (weekly_all, resets 2026-08-20 21:00:00)
 ```
 
 → the next task runs under `.claude-work`.
 
 ## Requirements
 
-A `ty` that supports the **`task.route`** hook and the **`ty usage`** command
-(TaskYou [#690](https://github.com/bborn/taskyou/pull/690)). Check with:
-
-```bash
-ty usage --help    # if this errors, upgrade: ty upgrade
-```
-
-Unlike the other plugins in this collection, this one is a *hook* plugin rather
-than a workflow — it needs that hook in ty itself, not just a workflow file.
+- **A `ty` that emits the `task.route` hook** (TaskYou
+  [#690](https://github.com/bborn/taskyou/pull/690)). Unlike the other plugins in
+  this collection, this one is a *hook* plugin rather than a workflow, so it needs
+  support in ty itself, not just a workflow file. On an older ty the plugin loads
+  and does nothing — the event never fires. To confirm it's working, start a task
+  and look for a `Routed to Claude profile …` line in its log.
+- **`jq` or `python3`** on the daemon's `PATH`, to read the usage API's JSON.
+  macOS has shipped `/usr/bin/jq` for a while; otherwise `brew install jq`.
 
 ## Setup
 
@@ -58,7 +59,7 @@ than a workflow — it needs that hook in ty itself, not just a workflow file.
 3. **Check it sees both accounts:**
 
    ```bash
-   ty plugins run claude-profile-router status
+   ty plugins run claude-profile-router status   # or just: ./status.sh
    ```
 
 That's it — the next task ty spawns is routed. `ty logs` and the task's own log
@@ -82,9 +83,12 @@ record which profile it landed on and why.
   config dir, so a resume has to happen under the same profile or it would start
   a fresh conversation. A task already running on a profile therefore waits for
   *that* profile to reset rather than hopping to the other one.
-- Anything that goes wrong — no credentials, an expired login, `ty` not on the
-  daemon's `PATH` — means the plugin says nothing and the task spawns exactly as
-  it would have without it.
+- Anything that goes wrong — no credentials, an expired login, no `jq`/`python3`,
+  the usage API unreachable with no cached reading — means the plugin says nothing
+  and the task spawns exactly as it would have without it. The one exception is
+  deliberate: if *every* profile merely failed to probe, it does **not** hold your
+  tasks, because that's the plugin being broken rather than the accounts being
+  spent.
 
 ## Configuration
 
@@ -95,7 +99,9 @@ See [`config.example.env`](config.example.env). The knobs:
 | `TY_CLAUDE_PROFILES` | *(required)* | Space-separated config dirs to route between |
 | `TY_CLAUDE_MAX_PERCENT` | `90` | Skip a profile at or above this percent used |
 | `TY_CLAUDE_PROJECTS` | *(all)* | Only route tasks in these projects |
-| `TY_BIN` | `ty` | Path to the ty binary, if the daemon's `PATH` lacks it |
+| `TY_CLAUDE_JSON` | `auto` | Force a JSON backend (`jq` or `python3`) |
+| `TY_CLAUDE_CACHE_TTL` | `60` | Seconds a usage reading is served before refetching |
+| `TY_CLAUDE_CACHE_STALE` | `1800` | Seconds a cached reading stays usable when a live read fails |
 
 Anything already set in the environment overrides `config.env`, so you can try a
 threshold without editing the file:
@@ -111,16 +117,41 @@ TY_CLAUDE_MAX_PERCENT=50 ./route.sh
   same way, or a task routed to the quieter one may find tools missing. If you
   want to swap only credentials, use a per-task `env:` override instead (see
   `docs/plugins.md` in the main repo).
-- **Usage is read, never written.** `ty usage` reads each profile's stored OAuth
-  token to call the same endpoint Claude Code's `/usage` uses. It never
-  refreshes or rewrites a credential. A profile whose token has gone stale
-  reports as unavailable until you run a `claude` session under it.
-- **Two probes per spawn**, each a single HTTPS GET, and ty caches the result for
-  a minute. The hook is capped at 15s; if it overruns, the task spawns normally.
+- **Usage is read, never written.** `usage.sh` reads each profile's stored OAuth
+  token — from the macOS Keychain, or `<config-dir>/.credentials.json` elsewhere —
+  to call the same endpoint Claude Code's `/usage` uses. It never refreshes,
+  rewrites, or prints a credential. A profile whose token has gone stale reports
+  as unavailable until you run a `claude` session under it.
+- **The keychain lookup depends on undocumented Anthropic behavior.** Claude Code
+  namespaces each config dir's credentials by a hash of its path; `usage.sh`
+  reproduces that. If Anthropic changes it, profiles report "no credentials"
+  (loudly, on stderr) and routing stops — it never silently reads as "0% used".
+- **Two probes per spawn**, each a single HTTPS GET, cached for a minute under
+  `~/.cache/ty/claude-usage`. The endpoint rate-limits, so the cache is not
+  optional; a cached reading up to 30 minutes old is used if a live read fails.
+  The hook is capped at 15s by ty; if it overruns, the task spawns normally.
 
 ## Trust
 
 This plugin reads your Claude credentials (to call the usage endpoint) and
-decides which account your tasks spend. Read `route.sh` before installing — it's
-about 90 lines of shell and does exactly two things: shell out to `ty usage`, and
-print the winning directory.
+decides which account your tasks spend. Read it before installing — it's two
+short shell scripts:
+
+- `usage.sh` — reads one profile's token and reports its used percent.
+- `route.sh` — asks `usage.sh` about each profile and prints the winner.
+
+## Files
+
+| File | What it is |
+| --- | --- |
+| `route.sh` | The `task.route` hook: picks a profile, or holds the task |
+| `usage.sh` | Reads one profile's rate-limit usage (`usage.sh percent\|show <dir>`) |
+| `status.sh` | The `status` action: what the router currently sees |
+| `config.env` | Your profiles and threshold (copy from `config.example.env`) |
+
+`usage.sh` is usable on its own:
+
+```bash
+./usage.sh percent ~/.claude-work   # -> 12
+./usage.sh show    ~/.claude-work
+```
