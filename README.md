@@ -19,6 +19,7 @@ same command to update them all (`git pull` under the hood).
 |--------|-------------------|
 | **rpi** | `ty pipeline -d rpi "<goal>"` — Research → Plan → Implement, **human-gated *and* reality-gated**. Neutral research questions, goal-blind research, a design gate and a plan gate you approve, then implement + simplify — each gated on your build + tests — then a PR. A human okays the approach; the machine proves the code. |
 | **plan-code-review** | `ty pipeline -d plan-code-review "<goal>"` — Plan → Code → two parallel reviewers → collect, on one shared branch. Each step's model/executor is configurable per project. |
+| **claude-profile-router** | Two Claude logins? Each task goes to whichever account has the most rate-limit headroom left, and waits in the queue when both are spent. The one **hook** plugin here rather than a workflow — it answers ty's `task.route` hook just before a task spawns. Needs `jq` or `python3`. |
 | **arc-solve** | `ty pipeline -d arc-solve "solve <game-id>"` — play a live [ARC-AGI-3](https://arcprize.org/arc-agi/3) game and complete a level. The gate **replays your solution against the real game**, so a win can't be faked. Needs only an ARC API key at `~/.config/arc/key`. |
 
 ## The idea: gate progress on reality
@@ -51,9 +52,15 @@ Workflows are picked up by convention — any `workflows/*.yaml` in a plugin bec
 `ty pipeline -d <name>` definition. To author your own, add a directory here (or in
 your own repo) and open a PR.
 
+Most plugins here are workflows, which work on any `ty`. A plugin that declares a
+**hook** needs a `ty` new enough to emit that event — `claude-profile-router` uses
+`task.route`, which fires before a task spawns. Each plugin's README states what it
+needs; `ty plugins list` shows what your install actually discovered.
+
 ## Trust
 
 Installing a plugin runs its scripts and workflow prompts with your agent's access,
 and a workflow step can set `env:` / `config_dir:` that route your agent's
-credentials. **Only `ty plugins add` sources you trust.** Read a plugin before you
-install it.
+credentials — as can a `task.route` hook, for every task. `claude-profile-router`
+additionally reads your stored Claude credentials to check each account's usage.
+**Only `ty plugins add` sources you trust.** Read a plugin before you install it.
