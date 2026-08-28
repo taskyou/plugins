@@ -123,9 +123,19 @@ TY_CLAUDE_MAX_PERCENT=50 ./route.sh
   rewrites, or prints a credential. A profile whose token has gone stale reports
   as unavailable until you run a `claude` session under it.
 - **The keychain lookup depends on undocumented Anthropic behavior.** Claude Code
-  namespaces each config dir's credentials by a hash of its path; `usage.sh`
-  reproduces that. If Anthropic changes it, profiles report "no credentials"
-  (loudly, on stderr) and routing stops — it never silently reads as "0% used".
+  namespaces each config dir's credentials by the SHA-256 of the *exact string*
+  it was given for `CLAUDE_CONFIG_DIR` — NFC-normalized, and **not** resolved or
+  tidied. `usage.sh` reproduces that, which means `~/.claude-work` and
+  `~/.claude-work/` are different profiles: list yours in `TY_CLAUDE_PROFILES`
+  the same way you set `CLAUDE_CONFIG_DIR` when you logged in. (A trailing slash
+  that misses gets an explicit hint rather than a silent skip.) If Anthropic
+  changes the scheme, profiles report "no credentials" loudly on stderr and
+  routing stops — it never silently reads as "0% used".
+- **[claude-swap](https://github.com/realiti4/claude-swap) is worth a look** if
+  you want more than routing: it manages the accounts themselves (adding,
+  refreshing dead tokens, a TUI) and is where the credential handling here was
+  checked against. Once it can report a session profile's path, this plugin can
+  drop `usage.sh` and just ask it.
 - **Two probes per spawn**, each a single HTTPS GET, cached for a minute under
   `~/.cache/ty/claude-usage`. The endpoint rate-limits, so the cache is not
   optional; a cached reading up to 30 minutes old is used if a live read fails.

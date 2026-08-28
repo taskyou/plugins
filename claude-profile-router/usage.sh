@@ -74,16 +74,35 @@ sha256_of() {
   fi
 }
 
-normalize_dir() {
-  local d="${1/#\~/$HOME}"
-  while [[ "$d" == */ && "$d" != "/" ]]; do d="${d%/}"; done
-  printf '%s' "$d"
+# Expand a leading ~ and NOTHING else.
+#
+# Claude hashes the *raw* CLAUDE_CONFIG_DIR string it was given — NFC-normalized
+# and unresolved (claude's envUtils.ts / macOsKeychainHelpers.ts, as documented
+# by claude-swap's keychain_service_name). So "~/.claude-work" and
+# "~/.claude-work/" are genuinely different keychain entries, and "tidying" the
+# path here would compute a hash for a profile that doesn't exist.
+#
+# Only ~ is expanded, because the shell would have expanded it before exec if it
+# had been unquoted — it is our own config file's convenience, not part of the
+# string Claude ever saw.
+expand_tilde() {
+  printf '%s' "${1/#\~/$HOME}"
+}
+
+# NFC-normalize, matching what Claude hashes. Pure-ASCII paths are unaffected;
+# a path with accented characters would otherwise hash differently depending on
+# whether it was typed composed or decomposed.
+nfc() {
+  if [[ "$JSON" == python3 ]] || command -v python3 >/dev/null 2>&1; then
+    printf '%s' "$1" | python3 -c "import sys,unicodedata; sys.stdout.write(unicodedata.normalize('NFC', sys.stdin.read()))" 2>/dev/null && return 0
+  fi
+  printf '%s' "$1"
 }
 
 # creds_blob <config-dir> -> the raw credential JSON on stdout
 creds_blob() {
   local dir="$1" svc blob
-  svc="Claude Code-credentials-$(sha256_of "$dir" | cut -c1-8)"
+  svc="Claude Code-credentials-$(sha256_of "$(nfc "$dir")" | cut -c1-8)"
 
   if command -v security >/dev/null 2>&1; then
     blob=$(security find-generic-password -s "$svc" -w 2>/dev/null)
@@ -137,7 +156,14 @@ cache_write() { # <config-dir> <body>
 fetch_usage() {
   local dir="$1" blob token expires now body code
 
-  blob=$(creds_blob "$dir") || die "no Claude credentials for $dir (log in once with CLAUDE_CONFIG_DIR=$dir claude)"
+  if ! blob=$(creds_blob "$dir"); then
+    # A trailing slash is a different profile as far as Claude is concerned, and
+    # that is a baffling miss to debug if nobody says so.
+    if [[ "$dir" == */ ]] && creds_blob "${dir%/}" >/dev/null 2>&1; then
+      die "no credentials for '$dir', but '${dir%/}' has them — drop the trailing slash in TY_CLAUDE_PROFILES (Claude keys credentials on the exact string)"
+    fi
+    die "no Claude credentials for $dir (log in once with CLAUDE_CONFIG_DIR=$dir claude)"
+  fi
 
   token=$(json_field "$blob" '.claudeAiOauth.accessToken // empty' \
     "print(d.get('claudeAiOauth',{}).get('accessToken',''))")
@@ -238,7 +264,7 @@ else:
 
 # --- main ---------------------------------------------------------------------
 [[ $# -ge 2 ]] || die "usage: usage.sh {percent|show} <config-dir>"
-mode="$1"; dir="$(normalize_dir "$2")"
+mode="$1"; dir="$(expand_tilde "$2")"
 usage_json="$(fetch_usage "$dir")" || exit 1
 
 case "$mode" in
